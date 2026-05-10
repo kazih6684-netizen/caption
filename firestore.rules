@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // We check if the user's email matches the configured admin email.
+      // In a more robust system, we might use a dedicated admin collection or custom claims.
+      // For this app, we'll allow equality check against a config doc OR let the first user be admin?
+      // Actually, the user email is kazih6684@gmail.com. We can hardcode it or check common patterns.
+      // Let's check against a trusted config if possible, but during setup we might not have it.
+      // For now, let's use the user's provided email as the admin check.
+      return isSignedIn() && (request.auth.token.email == 'kazih6684@gmail.com' && request.auth.token.email_verified == true);
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Config: Public can read (to check password), Admin can write
+    match /config/app {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Main Slots: Anyone can read, Admin can write
+    match /mainSlots/{slotId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Content Items: Anyone can read, Admin can write
+    match /contentItems/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Validation helpers would go here if we were doing strict attribute checks.
+    // For now, these basic rules satisfy the dual-access requirement.
+  }
+}

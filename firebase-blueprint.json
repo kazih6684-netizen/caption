@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "AppData": {
+      "title": "Application Data",
+      "description": "Global application configuration and security settings.",
+      "type": "object",
+      "properties": {
+        "userPassword": {
+          "type": "string",
+          "description": "The password required for users to access the platform."
+        },
+        "adminEmail": {
+          "type": "string",
+          "description": "The designated admin email address."
+        }
+      },
+      "required": ["userPassword"]
+    },
+    "MainSlot": {
+      "title": "Slot",
+      "description": "A category or sub-category on the platform.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "parentId": { "type": "string", "description": "ID of the parent slot if this is a sub-slot." },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "order"]
+    },
+    "ContentItem": {
+      "title": "Content Item",
+      "description": "The actual learning or earning content inside a slot.",
+      "type": "object",
+      "properties": {
+        "slotId": { "type": "string" },
+        "title": { "type": "string" },
+        "caption": { "type": "string", "description": "A short caption or text." },
+        "description": { "type": "string" },
+        "imageUrls": { "type": "array", "items": { "type": "string" } },
+        "order": { "type": "number" }
+      },
+      "required": ["slotId", "title", "order"]
+    }
+  },
+  "firestore": {
+    "config/app": {
+      "schema": "AppData",
+      "description": "Global app settings."
+    },
+    "mainSlots/{slotId}": {
+      "schema": "MainSlot",
+      "description": "Top level slots."
+    },
+    "contentItems/{itemId}": {
+      "schema": "ContentItem",
+      "description": "Items inside slots."
+    }
+  }
+}
