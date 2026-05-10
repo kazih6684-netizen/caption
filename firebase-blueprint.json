@@ -41,6 +41,17 @@
         "order": { "type": "number" }
       },
       "required": ["slotId", "title", "order"]
+    },
+    "Channel": {
+      "title": "Channel",
+      "description": "A communication channel link (e.g. WhatsApp, Telegram).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "url"]
     }
   },
   "firestore": {
@@ -55,6 +66,10 @@
     "contentItems/{itemId}": {
       "schema": "ContentItem",
       "description": "Items inside slots."
+    },
+    "channels/{channelId}": {
+      "schema": "Channel",
+      "description": "Information channels."
     }
   }
 }

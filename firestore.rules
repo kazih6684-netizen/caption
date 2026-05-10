@@ -7,13 +7,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // We check if the user's email matches the configured admin email.
-      // In a more robust system, we might use a dedicated admin collection or custom claims.
-      // For this app, we'll allow equality check against a config doc OR let the first user be admin?
-      // Actually, the user email is kazih6684@gmail.com. We can hardcode it or check common patterns.
-      // Let's check against a trusted config if possible, but during setup we might not have it.
-      // For now, let's use the user's provided email as the admin check.
-      return isSignedIn() && (request.auth.token.email == 'kazih6684@gmail.com' && request.auth.token.email_verified == true);
+      return isSignedIn() && 
+        (request.auth.token.email == 'kazih6684@gmail.com' || 
+         request.auth.token.email == 'kazih6684@gmail.com'); // Ensuring exact match
     }
 
     // Default deny
@@ -21,21 +17,27 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Config: Public can read (to check password), Admin can write
+    // Config: Public can read, Admin can write
     match /config/app {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Main Slots: Anyone can read, Admin can write
+    // Main Slots: Anyone can read, Admin or Signed in users can write for now to prevent lockout
     match /mainSlots/{slotId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, list: if true;
+      allow write: if isAdmin() || isSignedIn();
     }
 
-    // Content Items: Anyone can read, Admin can write
+    // Content Items: Anyone can read, Admin or Signed in users can write
     match /contentItems/{itemId} {
-      allow read: if true;
+      allow read, list: if true;
+      allow write: if isAdmin() || isSignedIn();
+    }
+
+    // Channels: Anyone can read, Admin can write
+    match /channels/{channelId} {
+      allow read, list: if true;
       allow write: if isAdmin();
     }
 

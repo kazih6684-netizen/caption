@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppConfig, MainSlot, ContentItem } from '../types.ts';
+import { AppConfig, MainSlot, ContentItem, Channel } from '../types.ts';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, ChevronRight, Download, Box, Sparkles, Copy, Check, Megaphone, ArrowLeft } from 'lucide-react';
 import { cn } from '../lib/utils.ts';
@@ -8,9 +8,10 @@ interface UserPortalProps {
   config: AppConfig | null;
   mainSlots: MainSlot[];
   contentItems: ContentItem[];
+  channels: Channel[];
 }
 
-export default function UserPortal({ config, mainSlots, contentItems }: UserPortalProps) {
+export default function UserPortal({ config, mainSlots, contentItems, channels }: UserPortalProps) {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState('');
@@ -139,15 +140,18 @@ export default function UserPortal({ config, mainSlots, contentItems }: UserPort
             Home
           </button>
           
-          <a 
-            href="https://whatsapp.com/channel/0029Vb8MfN14tRrjb3LjUS3D"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-5 py-2.5 bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 hover:bg-[#25D366] hover:text-white"
-          >
-            <Megaphone size={14} />
-            Channel
-          </a>
+          {channels.map(channel => (
+            <a 
+              key={channel.id}
+              href={channel.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2.5 bg-brand-primary/10 border border-brand-primary/20 text-brand-primary rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 hover:bg-brand-primary hover:text-slate-950"
+            >
+              <Megaphone size={14} />
+              {channel.name}
+            </a>
+          ))}
 
           {parentStack.map((p, idx) => (
             <React.Fragment key={p.id}>
@@ -179,7 +183,12 @@ export default function UserPortal({ config, mainSlots, contentItems }: UserPort
               onClick={() => setParentStack(prev => [...prev, slot])}
               className="group cursor-pointer relative"
             >
-              <div className="glass p-6 rounded-2xl h-full border-slate-800/50 hover:border-brand-primary/30 hover:bg-slate-900/80 transition-all duration-500 flex flex-col items-center justify-center text-center gap-4 shadow-xl">
+              <div className="glass p-6 rounded-2xl h-full border-slate-800/50 hover:border-brand-primary/30 hover:bg-slate-900/80 transition-all duration-500 flex flex-col items-center justify-center text-center gap-4 shadow-xl relative">
+                  {contentItems.filter(i => i.slotId === slot.id).length > 0 && (
+                    <div className="absolute top-3 right-3 bg-brand-primary text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg">
+                      {contentItems.filter(i => i.slotId === slot.id).length}
+                    </div>
+                  )}
                  <div className="w-12 h-12 bg-slate-950 rounded-xl flex items-center justify-center text-brand-primary group-hover:scale-110 group-hover:bg-brand-primary group-hover:text-slate-950 transition-all duration-500 shadow-inner">
                     <Box size={20} />
                   </div>
@@ -203,13 +212,27 @@ export default function UserPortal({ config, mainSlots, contentItems }: UserPort
             >
               <div className="glass rounded-[2rem] overflow-hidden border-slate-800/50 shadow-2xl transition-all duration-500 hover:border-brand-primary/20">
                 <div className="p-6 md:p-8 space-y-8">
-                   <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-                     <div className="space-y-4 flex-1">
+                    <div className="flex flex-col gap-6">
+                      <div className="space-y-6 flex-1">
+                        {item.authorName && (
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 group/author">
+                              <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center text-brand-primary border border-brand-primary/20 shadow-inner group-hover/author:bg-brand-primary group-hover/author:text-slate-950 transition-all duration-300">
+                                <Sparkles size={14} />
+                              </div>
+                              <div className="flex flex-col -space-y-0.5">
+                                <span className="text-[8px] font-black tracking-[0.2em] text-slate-500 uppercase">Uploaded By</span>
+                                <span className="text-[10px] font-black text-white uppercase tracking-wider bg-brand-primary/10 px-2 py-0.5 rounded border border-brand-primary/10">{item.authorName}</span>
+                              </div>
+                            </div>
+                            <div className="h-px flex-1 bg-gradient-to-r from-slate-800/80 to-transparent" />
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
-                          <div className="h-2 w-2 rounded-full bg-brand-primary" />
-                          <span className="text-[10px] font-black tracking-widest text-brand-primary uppercase">Content Data</span>
+                           <div className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
+                           <span className="text-[9px] font-black tracking-widest text-slate-500 uppercase">System Data</span>
                         </div>
-                        <div className="relative group/copy">
+                        <div className="relative group/copy pl-4 border-l-2 border-brand-primary/20">
                           <p className="text-slate-200 text-sm md:text-base leading-relaxed font-semibold select-text selection:bg-brand-primary/40 whitespace-pre-wrap">
                             {item.description}
                           </p>
@@ -221,8 +244,8 @@ export default function UserPortal({ config, mainSlots, contentItems }: UserPort
                             {copiedId === item.id ? 'Copied' : 'Copy Content'}
                           </button>
                         </div>
-                     </div>
-                   </div>
+                      </div>
+                    </div>
 
                    {item.imageUrls && item.imageUrls.filter(url => url && url.trim() !== "").length > 0 && (
                      <div className="space-y-8 pt-8 border-t border-slate-800/50">

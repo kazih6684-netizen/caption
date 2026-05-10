@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { onSnapshot, doc, collection, query, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { db, auth } from './lib/firebase.ts';
-import { AppConfig, MainSlot, ContentItem, ViewMode } from './types.ts';
+import { AppConfig, MainSlot, ContentItem, ViewMode, Channel } from './types.ts';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors.ts';
 import AdminPortal from './components/AdminPortal.tsx';
 import MentorPortal from './components/MentorPortal.tsx';
@@ -17,6 +17,7 @@ export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [mainSlots, setMainSlots] = useState<MainSlot[]>([]);
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
   const [isMentor, setIsMentor] = useState(false);
   const [mentorInput, setMentorInput] = useState('');
@@ -27,9 +28,10 @@ export default function App() {
     let configLoaded = false;
     let slotsLoaded = false;
     let itemsLoaded = false;
+    let channelsLoaded = false;
 
     const checkLoading = () => {
-      if (configLoaded && slotsLoaded && itemsLoaded) {
+      if (configLoaded && slotsLoaded && itemsLoaded && channelsLoaded) {
         setLoading(false);
       }
     };
@@ -77,11 +79,27 @@ export default function App() {
       checkLoading();
     });
 
+    const unsubChannels = onSnapshot(collection(db, 'channels'), (snap) => {
+      const chs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Channel));
+      setChannels(chs.sort((a, b) => {
+        const timeA = a.createdAt ? (typeof a.createdAt.toMillis === 'function' ? a.createdAt.toMillis() : new Date(a.createdAt as any).getTime()) : 0;
+        const timeB = b.createdAt ? (typeof b.createdAt.toMillis === 'function' ? b.createdAt.toMillis() : new Date(b.createdAt as any).getTime()) : 0;
+        return timeA - timeB;
+      }));
+      channelsLoaded = true;
+      checkLoading();
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'channels');
+      channelsLoaded = true;
+      checkLoading();
+    });
+
     return () => {
       unsubAuth();
       unsubConfig();
       unsubSlots();
       unsubItems();
+      unsubChannels();
     };
   }, []);
 
@@ -175,6 +193,7 @@ export default function App() {
                 config={config} 
                 mainSlots={mainSlots} 
                 contentItems={contentItems} 
+                channels={channels}
                 isAdmin={isAdmin}
               />
             </motion.div>
@@ -206,6 +225,7 @@ export default function App() {
                 config={config} 
                 mainSlots={mainSlots} 
                 contentItems={contentItems} 
+                channels={channels}
               />
             </motion.div>
           )}

@@ -30,6 +30,7 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
   const [newSlotTitle, setNewSlotTitle] = useState('');
   const [newItemDesc, setNewItemDesc] = useState('');
   const [newItemImages, setNewItemImages] = useState('');
+  const [authorName, setAuthorName] = useState('');
   
   // Error States
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -110,11 +111,13 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
       await addDoc(collection(db, 'contentItems'), {
         slotId: currentParentId || null,
         description: newItemDesc,
+        authorName: authorName.trim() || 'Anonymous',
         imageUrls: finalImageUrls,
         createdAt: serverTimestamp(),
       });
       
       setNewItemDesc('');
+      setAuthorName('');
       setNewItemImages('');
       setSelectedFiles([]);
       setUploadProgress(0);
@@ -255,7 +258,14 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
               {currentSlots.length === 0 && <p className="text-[10px] text-slate-600 italic">No sub-modules found here.</p>}
               {currentSlots.map(slot => (
                 <div key={slot.id} className="flex items-center justify-between group bg-slate-900/30 p-4 rounded-2xl border border-slate-800 hover:border-brand-accent/20 hover:bg-slate-900/50 transition-all shadow-sm">
-                  <span onClick={() => setParentStack(prev => [...prev, slot])} className="text-sm font-bold text-slate-300 group-hover:text-brand-accent cursor-pointer transition-colors flex-1 pr-2">{slot.title}</span>
+                  <div onClick={() => setParentStack(prev => [...prev, slot])} className="flex-1 flex items-center gap-3 cursor-pointer group">
+                    <span className="text-sm font-bold text-slate-300 group-hover:text-brand-accent transition-colors truncate">{slot.title}</span>
+                    {contentItems.filter(i => i.slotId === slot.id).length > 0 && (
+                      <span className="bg-brand-accent/10 text-brand-accent text-[10px] font-black px-2 py-0.5 rounded-lg border border-brand-accent/20">
+                        {contentItems.filter(i => i.slotId === slot.id).length}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1">
                     <button 
                       onClick={(e) => {
@@ -293,7 +303,19 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
             </div>
 
             <div className="space-y-6">
-              <div className="space-y-2">
+              <div className="space-y-4">
+                <div className="relative group">
+                  <div className="absolute left-6 top-1/2 -translate-y-1/2 text-brand-accent/40 group-focus-within:text-brand-accent transition-colors">
+                    <Sparkles size={18} />
+                  </div>
+                  <input 
+                    type="text"
+                    value={authorName}
+                    onChange={(e) => setAuthorName(e.target.value)}
+                    placeholder="Writter Name (e.g. Mentor Jibon)"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-16 pr-6 py-4 focus:border-brand-accent outline-none transition-all text-sm font-bold placeholder:text-slate-700" 
+                  />
+                </div>
                 <textarea 
                   value={newItemDesc} 
                   onChange={(e) => setNewItemDesc(e.target.value)} 
@@ -382,6 +404,16 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
                  <div key={item.id} className="glass p-5 rounded-3xl border-slate-800/50 hover:bg-slate-900/60 transition-all">
                    <div className="flex gap-6">
                      <div className="flex-1 space-y-4">
+                        {item.authorName && (
+                          <div className="flex items-center gap-3">
+                            <div className="bg-brand-accent/10 border border-brand-accent/20 px-3 py-1.5 rounded-lg">
+                              <p className="text-[9px] font-black text-brand-accent uppercase tracking-[0.1em]">
+                                WRITTER: <span className="text-white ml-1">{item.authorName}</span>
+                              </p>
+                            </div>
+                            <div className="h-px flex-1 bg-slate-800/50" />
+                          </div>
+                        )}
                         <p className="text-sm text-slate-200 font-medium whitespace-pre-wrap select-text">{item.description}</p>
                         {item.imageUrls && item.imageUrls.length > 0 && (
                           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">

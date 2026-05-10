@@ -18,13 +18,18 @@ export interface MainSlot {
 
 export interface ContentItem {
   id: string;
-  slotId: string;
-  title: string;
-  caption?: string;
+  slotId: string | null;
   description: string;
-  imageUrls: string[];
-  order: number;
-  createdAt: Timestamp;
+  imageUrls?: string[];
+  authorName?: string;
+  createdAt: any;
+}
+
+export interface Channel {
+  id: string;
+  name: string;
+  url: string;
+  createdAt: any;
 }
 
 export enum ViewMode {

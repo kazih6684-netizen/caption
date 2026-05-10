@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
 import { db, logout, storage, loginWithGoogle } from '../lib/firebase.ts';
-import { AppConfig, MainSlot, ContentItem } from '../types.ts';
+import { AppConfig, MainSlot, ContentItem, Channel } from '../types.ts';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors.ts';
 import { setDoc, doc, addDoc, collection, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Plus, Trash2, LogOut, ChevronRight, Image as ImageIcon, Layout, Type, ShieldCheck, Box, Sparkles, BookOpen, Upload, Loader2, X, ExternalLink, AlertCircle, Key, User as UserIcon, ShieldAlert, Save, Flame, Bell, ToggleRight, MessageSquare, ListTree, Settings, Shield, LogIn } from 'lucide-react';
+import { Plus, Trash2, LogOut, ChevronRight, Image as ImageIcon, Layout, Type, ShieldCheck, Box, Sparkles, BookOpen, Upload, Loader2, X, ExternalLink, AlertCircle, Key, User as UserIcon, ShieldAlert, Save, Flame, Bell, ToggleRight, MessageSquare, ListTree, Settings, Shield, LogIn, Megaphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils.ts';
 
@@ -14,11 +14,12 @@ interface AdminPortalProps {
   config: AppConfig | null;
   mainSlots: MainSlot[];
   contentItems: ContentItem[];
+  channels: Channel[];
   isAdmin: boolean;
 }
 
-export default function AdminPortal({ user, config, mainSlots, contentItems, isAdmin }: AdminPortalProps) {
-  const [activeTab, setActiveTab] = useState<'slots' | 'settings'>('slots');
+export default function AdminPortal({ user, config, mainSlots, contentItems, channels, isAdmin }: AdminPortalProps) {
+  const [activeTab, setActiveTab] = useState<'slots' | 'settings' | 'channels'>('slots');
   const [userPassword, setUserPassword] = useState(config?.userPassword || '');
   const [mentorPassword, setMentorPassword] = useState(config?.mentorPassword || '');
   const [adminPassword, setAdminPassword] = useState(config?.adminPassword || '');
@@ -44,7 +45,10 @@ export default function AdminPortal({ user, config, mainSlots, contentItems, isA
   // Form States
   const [newSlotTitle, setNewSlotTitle] = useState('');
   const [newItemDesc, setNewItemDesc] = useState('');
+  const [authorName, setAuthorName] = useState('');
   const [newItemImages, setNewItemImages] = useState('');
+  const [newChannelName, setNewChannelName] = useState('');
+  const [newChannelUrl, setNewChannelUrl] = useState('');
   
   // Error States
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -109,6 +113,21 @@ export default function AdminPortal({ user, config, mainSlots, contentItems, isA
     }
   };
 
+  const handleAddChannel = async () => {
+    if (!newChannelName || !newChannelUrl) return;
+    try {
+      await addDoc(collection(db, 'channels'), {
+        name: newChannelName,
+        url: newChannelUrl,
+        createdAt: serverTimestamp(),
+      });
+      setNewChannelName('');
+      setNewChannelUrl('');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'channels');
+    }
+  };
+
   const handleAddItem = async () => {
     if (!newItemDesc) return;
     
@@ -125,11 +144,13 @@ export default function AdminPortal({ user, config, mainSlots, contentItems, isA
       await addDoc(collection(db, 'contentItems'), {
         slotId: currentParentId || null,
         description: newItemDesc,
+        authorName: authorName.trim() || 'Admin',
         imageUrls: finalImageUrls,
         createdAt: serverTimestamp(),
       });
       
       setNewItemDesc('');
+      setAuthorName('');
       setNewItemImages('');
       setSelectedFiles([]);
       setUploadProgress(0);
@@ -142,11 +163,13 @@ export default function AdminPortal({ user, config, mainSlots, contentItems, isA
     }
   };
 
-  const handleDeleteItem = async (id: string, type: 'slot' | 'item' = 'item') => {
+  const handleDeleteItem = async (id: string, type: 'slot' | 'item' | 'channel' = 'item') => {
     setIsDeleting(true);
     try {
       if (type === 'slot') {
         await deleteDoc(doc(db, 'mainSlots', id));
+      } else if (type === 'channel') {
+        await deleteDoc(doc(db, 'channels', id));
       } else {
         await deleteDoc(doc(db, 'contentItems', id));
       }
@@ -271,6 +294,15 @@ export default function AdminPortal({ user, config, mainSlots, contentItems, isA
             <ListTree size={16} /> Modules
           </button>
           <button 
+            onClick={() => setActiveTab('channels')}
+            className={cn(
+              "flex items-center gap-3 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+              activeTab === 'channels' ? "bg-brand-primary text-slate-950 shadow-lg" : "text-slate-500 hover:text-white"
+            )}
+          >
+            <Megaphone size={16} /> Channels
+          </button>
+          <button 
             onClick={() => setActiveTab('settings')}
             className={cn(
               "flex items-center gap-3 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
@@ -357,7 +389,14 @@ export default function AdminPortal({ user, config, mainSlots, contentItems, isA
                          exit={{ opacity: 0, scale: 0.95 }}
                          className="flex items-center justify-between group bg-slate-950/40 p-4 rounded-xl border border-slate-800 hover:border-brand-primary/30 transition-all"
                        >
-                         <span onClick={() => setParentStack(prev => [...prev, slot])} className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-brand-primary cursor-pointer transition-colors flex-1 pr-2 truncate">{slot.title}</span>
+                         <div onClick={() => setParentStack(prev => [...prev, slot])} className="flex-1 flex items-center gap-3 cursor-pointer group">
+                           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-brand-primary transition-colors truncate">{slot.title}</span>
+                           {contentItems.filter(i => i.slotId === slot.id).length > 0 && (
+                             <span className="bg-brand-primary/10 text-brand-primary text-[8px] font-black px-1.5 py-0.5 rounded-md border border-brand-primary/20">
+                               {contentItems.filter(i => i.slotId === slot.id).length}
+                             </span>
+                           )}
+                         </div>
                          <div className="flex items-center gap-1.5">
                             <button 
                               onClick={(e) => {
@@ -399,7 +438,17 @@ export default function AdminPortal({ user, config, mainSlots, contentItems, isA
                 </div>
 
                 <div className="space-y-8">
-                  <div className="space-y-3">
+                  <div className="space-y-4">
+                    <div className="relative group">
+                      <Sparkles size={16} className="absolute left-6 top-1/2 -translate-y-1/2 text-brand-primary/30 group-focus-within:text-brand-primary transition-colors" />
+                      <input 
+                        type="text" 
+                        value={authorName} 
+                        onChange={(e) => setAuthorName(e.target.value)} 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-16 pr-6 py-4 focus:border-brand-primary outline-none transition-all text-sm font-bold shadow-inner" 
+                        placeholder="Author Name (e.g. Mentor Jibon)"
+                      />
+                    </div>
                     <textarea 
                       value={newItemDesc} 
                       onChange={(e) => setNewItemDesc(e.target.value)} 
@@ -535,6 +584,114 @@ export default function AdminPortal({ user, config, mainSlots, contentItems, isA
               </section>
             </div>
           </motion.div>
+        ) : activeTab === 'channels' ? (
+          <motion.div 
+            key="channels"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="max-w-4xl mx-auto space-y-12"
+          >
+            <div className="glass p-12 rounded-[3.5rem] border-brand-primary/10 shadow-2xl space-y-12">
+              <div className="space-y-4 text-center">
+                <div className="p-5 bg-brand-primary/10 rounded-[2rem] text-brand-primary inline-flex shadow-xl border border-brand-primary/20 mb-4"><Megaphone size={48} strokeWidth={2.5} /></div>
+                <h2 className="text-4xl font-black text-white tracking-tighter">Manage Channels</h2>
+                <p className="text-slate-500 font-medium max-w-sm mx-auto">Add WhatsApp or Information Channel links.</p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input 
+                    type="text" 
+                    value={newChannelName} 
+                    onChange={(e) => setNewChannelName(e.target.value)} 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 focus:border-brand-primary outline-none transition-all text-sm font-bold" 
+                    placeholder="Channel Name (e.g. WhatsApp Group)"
+                  />
+                  <input 
+                    type="text" 
+                    value={newChannelUrl} 
+                    onChange={(e) => setNewChannelUrl(e.target.value)} 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 focus:border-brand-primary outline-none transition-all text-sm font-bold" 
+                    placeholder="Link URL..."
+                  />
+                </div>
+                <button 
+                  onClick={handleAddChannel}
+                  disabled={!newChannelName || !newChannelUrl}
+                  className="w-full bg-brand-primary text-slate-950 font-black py-4 rounded-2xl disabled:opacity-30 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-brand-primary/20 uppercase tracking-[0.2em] text-xs"
+                >
+                  Add Channel
+                </button>
+              </div>
+
+              <div className="space-y-4 pt-10 border-t border-slate-800/50">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 px-2">Active Channels</h3>
+                {channels.length === 0 && <p className="text-sm text-slate-700 italic px-2">No channels configured</p>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {channels.map(channel => (
+                    <div key={channel.id} className="bg-slate-950/40 p-5 rounded-2xl border border-slate-800 flex items-center justify-between group hover:border-brand-primary/30 transition-all">
+                      <div className="space-y-1">
+                        <p className="text-sm font-black text-white uppercase tracking-widest">{channel.name}</p>
+                        <p className="text-[10px] text-slate-600 truncate max-w-[200px]">{channel.url}</p>
+                      </div>
+                      <button 
+                        onClick={() => setConfirmingDeleteId(channel.id)}
+                        className="p-2 text-slate-700 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Password & Security Section */}
+              <div className="pt-10 border-t border-slate-800/50 space-y-12">
+                 <div className="space-y-4 text-center">
+                    <div className="p-4 bg-brand-primary/10 rounded-2xl text-brand-primary inline-flex shadow-xl border border-brand-primary/20"><Key size={32} /></div>
+                    <h3 className="text-2xl font-black text-white tracking-tight uppercase">Access & Security</h3>
+                 </div>
+
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="p-6 bg-slate-900/40 rounded-3xl border border-slate-800/80 space-y-4">
+                     <div className="flex items-center gap-3">
+                       <div className="p-2 bg-brand-primary/10 rounded-lg text-brand-primary"><UserIcon size={16} /></div>
+                       <h4 className="font-black text-slate-200 uppercase tracking-widest text-[9px]">User Password</h4>
+                     </div>
+                     <input 
+                       type="text" 
+                       value={userPassword} 
+                       onChange={(e) => setUserPassword(e.target.value)} 
+                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-3 focus:border-brand-primary outline-none transition-all font-mono tracking-widest text-xs" 
+                       placeholder="User Password..."
+                     />
+                   </div>
+
+                   <div className="p-6 bg-slate-900/40 rounded-3xl border border-slate-800/80 space-y-4">
+                     <div className="flex items-center gap-3">
+                       <div className="p-2 bg-brand-accent/10 rounded-lg text-brand-accent"><Flame size={16} /></div>
+                       <h4 className="font-black text-slate-200 uppercase tracking-widest text-[9px]">Mentor Password</h4>
+                     </div>
+                     <input 
+                       type="text" 
+                       value={mentorPassword} 
+                       onChange={(e) => setMentorPassword(e.target.value)} 
+                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-3 focus:border-brand-accent outline-none transition-all font-mono tracking-widest text-xs" 
+                       placeholder="Mentor Password..."
+                     />
+                   </div>
+                 </div>
+
+                 <button 
+                  onClick={handleUpdateConfig}
+                  className="w-full bg-brand-primary text-slate-950 font-black py-5 rounded-2xl flex items-center justify-center gap-4 hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl shadow-brand-primary/20 uppercase tracking-[0.2em] text-xs"
+                >
+                  <Save size={20} /> Update Security Settings
+                </button>
+              </div>
+            </div>
+          </motion.div>
         ) : (
           <motion.div 
             key="settings"
@@ -641,12 +798,6 @@ export default function AdminPortal({ user, config, mainSlots, contentItems, isA
                 >
                   <Save size={24} /> Save Configuration
                 </button>
-                <button 
-                  onClick={() => logout()}
-                  className="flex-1 bg-slate-950 border border-red-500/30 text-red-500 font-black py-6 rounded-[2rem] flex items-center justify-center gap-4 hover:bg-red-500 hover:text-white transition-all uppercase tracking-[0.3em] text-sm"
-                >
-                  <LogOut size={24} /> Log Out
-                </button>
               </div>
             </div>
           </motion.div>
@@ -671,7 +822,10 @@ export default function AdminPortal({ user, config, mainSlots, contentItems, isA
               </div>
               <div className="flex flex-col gap-3">
                 <button 
-                  onClick={() => handleDeleteItem(confirmingDeleteId, currentSlots.some(s => s.id === confirmingDeleteId) ? 'slot' : 'item')}
+                  onClick={() => handleDeleteItem(confirmingDeleteId, 
+                    currentSlots.some(s => s.id === confirmingDeleteId) ? 'slot' : 
+                    channels.some(c => c.id === confirmingDeleteId) ? 'channel' : 'item'
+                  )}
                   disabled={isDeleting}
                   className="w-full bg-red-500 text-white font-black py-5 rounded-2xl hover:bg-red-600 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
                 >
