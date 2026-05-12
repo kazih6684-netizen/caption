@@ -15,9 +15,10 @@ interface MentorPortalProps {
   mainSlots: MainSlot[];
   contentItems: ContentItem[];
   isMentor: boolean;
+  onExit?: () => void;
 }
 
-export default function MentorPortal({ config, mainSlots, contentItems, isMentor }: MentorPortalProps) {
+export default function MentorPortal({ config, mainSlots, contentItems, isMentor, onExit }: MentorPortalProps) {
   // Navigation State
   const [parentStack, setParentStack] = useState<MainSlot[]>([]);
   const currentParentId = parentStack.length > 0 ? parentStack[parentStack.length - 1].id : null;
@@ -222,7 +223,10 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
           </div>
           <div className="w-px h-8 bg-slate-800 mx-2 hidden md:block" />
           <button 
-            onClick={() => logout()}
+            onClick={() => {
+              logout();
+              if (onExit) onExit();
+            }}
             className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
           >
             <LogOut size={14} />

@@ -1,47 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && 
-        (request.auth.token.email == 'kazih6684@gmail.com' || 
-         request.auth.token.email == 'kazih6684@gmail.com'); // Ensuring exact match
-    }
-
-    // Default deny
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
     // Config: Public can read, Admin can write
     match /config/app {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if request.auth != null && request.auth.token.email == 'kazih6684@gmail.com';
     }
 
-    // Main Slots: Anyone can read/write for now to support password-based mentor access
+    // Main Slots: Open write to support password-managed mentor access
     match /mainSlots/{slotId} {
       allow read, list: if true;
-      allow write: if true; 
+      allow write: if true;
     }
 
-    // Content Items: Anyone can read/write for now to support password-based mentor access
+    // Content Items: Open write to support password-managed mentor access
     match /contentItems/{itemId} {
       allow read, list: if true;
       allow write: if true;
     }
 
-    // Channels: Anyone can read, Admin can write
+    // Channels: Public can read, Admin can write
     match /channels/{channelId} {
       allow read, list: if true;
-      allow write: if isAdmin();
+      allow write: if request.auth != null && request.auth.token.email == 'kazih6684@gmail.com';
     }
 
-    // Validation helpers would go here if we were doing strict attribute checks.
-    // For now, these basic rules satisfy the dual-access requirement.
+    // Default deny for all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

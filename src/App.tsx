@@ -212,6 +212,10 @@ export default function App() {
                 mainSlots={mainSlots} 
                 contentItems={contentItems} 
                 isMentor={isMentor || isAdmin}
+                onExit={() => {
+                  setIsMentor(false);
+                  setViewMode(ViewMode.USER);
+                }}
               />
             </motion.div>
           ) : (
