@@ -23,16 +23,16 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Main Slots: Anyone can read, Admin or Signed in users can write for now to prevent lockout
+    // Main Slots: Anyone can read/write for now to support password-based mentor access
     match /mainSlots/{slotId} {
       allow read, list: if true;
-      allow write: if isAdmin() || isSignedIn();
+      allow write: if true; 
     }
 
-    // Content Items: Anyone can read, Admin or Signed in users can write
+    // Content Items: Anyone can read/write for now to support password-based mentor access
     match /contentItems/{itemId} {
       allow read, list: if true;
-      allow write: if isAdmin() || isSignedIn();
+      allow write: if true;
     }
 
     // Channels: Anyone can read, Admin can write

@@ -66,9 +66,10 @@ export default function App() {
     const unsubItems = onSnapshot(collection(db, 'contentItems'), (snap) => {
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as ContentItem));
       // Sort by creation time (ascending - oldest first as requested "add below")
+      // New items with no createdAt (optimistic) or null timestamp go to the bottom
       setContentItems(items.sort((a, b) => {
-        const timeA = a.createdAt ? (typeof a.createdAt.toMillis === 'function' ? a.createdAt.toMillis() : new Date(a.createdAt as any).getTime()) : 0;
-        const timeB = b.createdAt ? (typeof b.createdAt.toMillis === 'function' ? b.createdAt.toMillis() : new Date(b.createdAt as any).getTime()) : 0;
+        const timeA = a.createdAt ? (typeof a.createdAt.toMillis === 'function' ? a.createdAt.toMillis() : new Date(a.createdAt as any).getTime()) : Date.now() + 1000000;
+        const timeB = b.createdAt ? (typeof b.createdAt.toMillis === 'function' ? b.createdAt.toMillis() : new Date(b.createdAt as any).getTime()) : Date.now() + 1000000;
         return timeA - timeB;
       }));
       itemsLoaded = true;
@@ -82,8 +83,8 @@ export default function App() {
     const unsubChannels = onSnapshot(collection(db, 'channels'), (snap) => {
       const chs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Channel));
       setChannels(chs.sort((a, b) => {
-        const timeA = a.createdAt ? (typeof a.createdAt.toMillis === 'function' ? a.createdAt.toMillis() : new Date(a.createdAt as any).getTime()) : 0;
-        const timeB = b.createdAt ? (typeof b.createdAt.toMillis === 'function' ? b.createdAt.toMillis() : new Date(b.createdAt as any).getTime()) : 0;
+        const timeA = a.createdAt ? (typeof a.createdAt.toMillis === 'function' ? a.createdAt.toMillis() : new Date(a.createdAt as any).getTime()) : Date.now() + 1000000;
+        const timeB = b.createdAt ? (typeof b.createdAt.toMillis === 'function' ? b.createdAt.toMillis() : new Date(b.createdAt as any).getTime()) : Date.now() + 1000000;
         return timeA - timeB;
       }));
       channelsLoaded = true;

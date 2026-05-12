@@ -24,7 +24,7 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
 
   // Confirmation State
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Form States
   const [newSlotTitle, setNewSlotTitle] = useState('');
@@ -82,6 +82,8 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
 
   const handleAddSlot = async () => {
     if (!newSlotTitle) return;
+    setIsProcessing(true);
+    setErrorMessage(null);
     try {
       await addDoc(collection(db, 'mainSlots'), {
         title: newSlotTitle,
@@ -90,15 +92,19 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
         createdAt: serverTimestamp(),
       });
       setNewSlotTitle('');
-    } catch (err) {
+    } catch (err: any) {
+      setErrorMessage(`Failed to add module: ${err.message}`);
       handleFirestoreError(err, OperationType.WRITE, 'mainSlots');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleAddItem = async () => {
     if (!newItemDesc) return;
     
-    setIsDeleting(true);
+    setIsProcessing(true);
+    setErrorMessage(null);
     try {
       let finalImageUrls: string[] = [];
       
@@ -122,16 +128,18 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
       setSelectedFiles([]);
       setUploadProgress(0);
       setUploadingFileName(null);
-    } catch (err) {
+    } catch (err: any) {
+      setErrorMessage(`Failed to save caption: ${err.message}`);
       handleFirestoreError(err, OperationType.WRITE, 'contentItems');
     } finally {
-      setIsDeleting(false);
+      setIsProcessing(false);
       setUploading(false);
     }
   };
 
   const handleDeleteItem = async (id: string, type: 'slot' | 'item' = 'item') => {
-    setIsDeleting(true);
+    setIsProcessing(true);
+    setErrorMessage(null);
     try {
       if (type === 'slot') {
         await deleteDoc(doc(db, 'mainSlots', id));
@@ -142,7 +150,7 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
     } catch (err: any) {
       setErrorMessage(`Delete Failed: ${err.message}`);
     } finally {
-      setIsDeleting(false);
+      setIsProcessing(false);
     }
   };
 
@@ -246,10 +254,10 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
               </div>
               <button 
                 onClick={handleAddSlot}
-                disabled={!newSlotTitle}
+                disabled={!newSlotTitle || isProcessing}
                 className="w-full bg-brand-accent text-slate-950 font-black py-4 rounded-2xl disabled:opacity-30 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-brand-accent/20 uppercase tracking-widest text-[10px]"
               >
-                Add Module
+                {isProcessing ? <Loader2 className="animate-spin mx-auto" size={16} /> : "Add Module"}
               </button>
             </div>
 
@@ -354,10 +362,10 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
                 
                 <button 
                   onClick={handleAddItem}
-                  disabled={isDeleting || uploading || !newItemDesc}
+                  disabled={isProcessing || uploading || !newItemDesc}
                   className="flex-[2] bg-brand-accent text-slate-950 font-black py-4 rounded-2xl flex items-center justify-center gap-3 disabled:opacity-30 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xl shadow-brand-accent/20 uppercase tracking-widest text-xs"
                 >
-                  {uploading ? <Loader2 className="animate-spin" size={20} /> : (isDeleting ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />)}
+                  {uploading ? <Loader2 className="animate-spin" size={20} /> : (isProcessing ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />)}
                   Save Caption
                 </button>
               </div>
@@ -471,10 +479,10 @@ export default function MentorPortal({ config, mainSlots, contentItems, isMentor
               <div className="flex flex-col gap-3">
                 <button 
                   onClick={() => handleDeleteItem(confirmingDeleteId, currentSlots.some(s => s.id === confirmingDeleteId) ? 'slot' : 'item')}
-                  disabled={isDeleting}
+                  disabled={isProcessing}
                   className="w-full bg-red-500 text-white font-black py-4 rounded-2xl hover:bg-red-600 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
                 >
-                  {isDeleting && <Loader2 className="animate-spin" size={18} />} Delete
+                  {isProcessing && <Loader2 className="animate-spin" size={18} />} Delete
                 </button>
                 <button 
                   onClick={() => setConfirmingDeleteId(null)}
